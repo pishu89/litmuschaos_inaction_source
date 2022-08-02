@@ -1,0 +1,37 @@
+name: Run Pod Delete Chaos Action
+
+on:
+  workflow_run:
+    workflows: ["Build and Deploy Bookinfo App"]
+    types:
+      - completed
+
+jobs:
+  run-cpu-hog:
+    name: Run LitmusChaos Experiments
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Git
+        uses: actions/checkout@v2
+
+      - name: Run Pod Delete Experiment
+        uses: litmuschaos/github-chaos-actions@master
+        env:
+          CHAOS_NAMESPACE: litmus
+          CHAOS_SERVICE_ACCOUNT: litmus-admin
+          APP_NS: bookinfo
+          APP_LABEL: app=productpage
+          APP_KIND: deployment
+          EXPERIMENT_NAME: pod-delete
+          EXPERIMENT_IMAGE: litmuschaos/go-runner
+          EXPERIMENT_IMAGE_TAG: latest
+          IMAGE_PULL_POLICY: Always
+          TARGET_CONTAINER: nginx
+          TOTAL_CHAOS_DURATION: 60
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}

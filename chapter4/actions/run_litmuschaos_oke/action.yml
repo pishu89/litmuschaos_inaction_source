@@ -1,0 +1,53 @@
+name: 'Run LitmusChaos OKE'
+description: 'Composite action for LitmusChaos and oke'
+inputs:
+  OCI_CLI_USER:
+    description: OCI User ID
+    required: true
+  OCI_CLI_TENANCY:
+    description: OCI Tenanct ID
+    required: true
+  OCI_CLI_FINGERPRINT:
+    description: OCI Fingerprint
+    required: true
+  OCI_CLI_KEY_CONTENT:
+    description: OCI Key Content
+    required: true
+  OCI_CLI_REGION:
+    description: OCI Region
+    required: true
+  OKE_CLUSTER:
+    description: Cluster ID
+    required: true
+  KUBE_CONFIG_DATA:
+    description: kubeconfig, base64 encoded
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Kubectl
+      uses: oracle-actions/configure-kubectl-oke@v1.0
+      id: kubectl-oke-action
+      with:
+        cluster: ${{ inputs.OKE_CLUSTER }}
+      env:
+        OCI_CLI_USER: ${{ inputs.OCI_CLI_USER }}
+        OCI_CLI_TENANCY: ${{ inputs.OCI_CLI_TENANCY }}
+        OCI_CLI_FINGERPRINT: ${{ inputs.OCI_CLI_FINGERPRINT }}
+        OCI_CLI_KEY_CONTENT: ${{ inputs.OCI_CLI_KEY_CONTENT }}
+        OCI_CLI_REGION: ${{ inputs.OCI_CLI_REGION }}
+
+    - name: Run CPU Hog Experiment
+      uses: litmuschaos/github-chaos-actions@master
+      env:
+        APP_NS: bookinfo
+        APP_LABEL: app=productpage
+        APP_KIND: deployment
+        EXPERIMENT_NAME: pod-cpu-hog
+        EXPERIMENT_IMAGE: litmuschaos/go-runner
+        EXPERIMENT_IMAGE_TAG: latest
+        IMAGE_PULL_POLICY: Always
+        TARGET_CONTAINER: nginx
+        TOTAL_CHAOS_DURATION: 60
+        KUBE_CONFIG_DATA: ${{ inputs.KUBE_CONFIG_DATA }}

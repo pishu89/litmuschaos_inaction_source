@@ -1,0 +1,90 @@
+name: Run CPU Hog Experiment
+
+on:
+#  push:
+#    branches:
+#      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  build-push:
+    runs-on: ubuntu-latest
+    name: Build and Push Containers
+
+    steps:
+      - name: Checkout Git
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push all the apps
+        run: |
+          docker buildx build --platform linux/amd64 -t aarushik93/details --push src/details
+          docker buildx build --platform linux/amd64 -t aarushik93/productpage --push src/productpage
+          docker buildx build --platform linux/amd64 -t aarushik93/ratings --push src/ratings
+          docker buildx build --platform linux/amd64 -t aarushik93/reviews --push src/reviews/reviews-wlpcfg
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Apps
+    needs: build-push
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+
+    steps:
+      - name: Checkout Git
+        uses: actions/checkout@v2
+
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.0
+        id: kubectl-oke-action
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER }}
+
+      - name: Run Kubectl
+        run: |
+          kubectl get nodes -A
+          kubectl get pods --all-namespaces
+
+      - name: Helm Deploy
+        run: |
+          kubectl config view
+          ls
+          helm upgrade --install bookinfo ./deployments/helm/bookinfo/ -f deployments/helm/bookinfo/values.yaml --namespace=bookinfo
+
+  run-cpu-hog:
+    name: Run LitmusChaos Experiments
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Git
+        uses: actions/checkout@v2
+
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.0
+        id: kubectl-oke-action
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER }}
+
+      - name: Run Pod Delete Experiment
+        run: kubectl create -f chaos_workflows/pod_delete_exp_workflow.yml

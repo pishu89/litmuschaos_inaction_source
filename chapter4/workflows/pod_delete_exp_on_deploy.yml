@@ -1,0 +1,30 @@
+name: Run Pod Delete Experiment
+
+on:
+  workflow_run:
+    workflows: ["Build and Deploy Bookinfo App"]
+    types:
+      - completed
+
+jobs:
+  run-pod-delete-experiment:
+    name: Run LitmusChaos Experiments
+    env:
+      OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+      OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+      OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+      OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+      OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Git
+        uses: actions/checkout@v2
+
+      - name: Configure Kubectl
+        uses: oracle-actions/configure-kubectl-oke@v1.0
+        id: kubectl-oke-action
+        with:
+          cluster: ${{ secrets.OKE_CLUSTER }}
+
+      - name: Run Pod Delete Experiment
+        run: kubectl apply -f chaos_workflows/pod_delete_exp_workflow.yml -n litmus
