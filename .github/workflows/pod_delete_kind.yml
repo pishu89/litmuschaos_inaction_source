@@ -46,7 +46,7 @@ jobs:
       - name: Helm Deploy
         id: deploy
         run: |
-          kind get kubeconfig  --name=chart-testing --internal > $HOME/.kube/config
+         # kind get kubeconfig  --name=chart-testing --internal > $HOME/.kube/config
           kubectl get nodes -o wide
           kubectl create ns bookinfo
           kubectl create ns litmus
