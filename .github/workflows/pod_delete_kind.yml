@@ -1,6 +1,6 @@
 name: Run Pod Delete Experiment in KinD
 
-# added token now 
+# added token now  in environment as well
 
 on:
   push:
